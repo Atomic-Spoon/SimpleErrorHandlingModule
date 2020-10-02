@@ -85,7 +85,7 @@ Function Invoke-LogfileRotate{
       Add-Content -Path $LogFilePath -Value "`r`n"
       Add-content -Path $LogFilePath -value $loggingTextString
     }
-Function Get-ErrorHandling{
+Function Get-EventHandling{
   <#
     .SYNOPSIS
 
@@ -104,24 +104,62 @@ Function Get-ErrorHandling{
         Finally {
           Follow up action  
         }
+    .PARAMETER ErrorCatch
+     (Mandatery) Needs to = $Error[0], I'll look for a cleaner method later
 
-      The basic (must be present items) command line to add into your scripts "Catch" statement is:
-
-      Get-ErrorHandling -logFilePath $logFilePath -ErrorExceptionCatch $_.Exception -ErrorInvocationInfoCatch $_.InvocationInfo
+      Get-EventHandling -logFilePath $logFilePath -$ErrorExceptionCatch $_.Exception -ErrorInvocationInfoCatch $_.InvocationInfo
 
       This will catch the last error in the error stack and write a readable error output to the screen and logfile, and then halt the script.
 
       Adding "-ExceptionAllowed" in the command will allow the script to continue if you feel the error is recoverable:
       
-      Get-ErrorHandling -logFilePath $logFilePath -ErrorExceptionCatch $_.Exception -ErrorInvocationInfoCatch $_.InvocationInfo -ExceptionAllowed 
+      Get-EventHandling -logFilePath $logFilePath -$ErrorExceptionCatch $_.Exception -ErrorInvocationInfoCatch $_.InvocationInfo -ExceptionAllowed
+    .EXAMPLE
+      The basic way to catch a script/module exception is to tell Get-EventHandling to catch the last error written to the PS error stack ($error[0]):
 
+      Try
+      {
+        Get-ADUser -justaFakeParam
+      }
+      Catch
+      {
+        Get-EventHandling -ErrorCatch $Error[0]
+      } 
+    .EXAMPLE
+      If you wish to add more parameters to use with Get-EventHandling you can "splat" your parameters as a hash-table and and call the hash-table whenever you invoke Get-EventHandling:
+
+      #Splat those params!
+      $eventParameters = @{
+        ErrorCapture = "$error[0]""
+        LogFilePath = "$env:UserProfile\Documents\myLogFile.log" 
+      }
+      Try
+      {
+        Get-ADUser -justaFakeParam
+      }
+      Catch
+      {
+        Get-EventHandling @eventParameters
+      }
+    .EXAMPLE
+      Adding the "-ExceptionAllowed" parameter in the command will allow the script to continue should you feel the exception would be recoverable and rhe script can still complete it's run:
+
+            Try
+      {
+        Get-ADUser -justaFakeParam
+      }
+      Catch
+      {
+        Get-EventHandling -ErrorCatch $Error[0] -ExceptionAllowed
+      } 
   #>
   Param(
     [Parameter(Mandatory=$false,ValueFromPipeline=$true)][switch]$exceptionAllowed,
     [Parameter(Mandatory=$false,ValueFromPipeline=$true)][switch]$writeToLogFile,
     [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$LogFilePath,
-    [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$errorStackInvocationInfo,
-    [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$errorStackException
+    [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$ErrorCapture,
+    [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$InvocationInfoCatch,
+    [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$ErrorExceptionCatch
   )
   $isItFatalDoc = If ($exceptionAllowed.IsPresent)
   {
@@ -131,24 +169,24 @@ Function Get-ErrorHandling{
   {
     "FATAL ERROR" 
   }
-  Write-Host -ForegroundColor Red "`n** ENCOUNTERED $isItFatalDoc **`n"
-  Write-Host "`n********** $isItFatalDoc DETAILS ********** "
-  <# Perform error message formating #>
-  $errorExceptionType = $errorStackException.GetType().FullName | Out-String
-  $errorExceptionType = $errorExceptionType.Replace("`n","").Replace("`r","")
+  Write-Host -ForegroundColor Red "`n*** ENCOUNTERED $isItFatalDoc ***`n"
+  Write-Host "`n### $isItFatalDoc DETAILS ###"
+  $errorExceptionType = $ErrorCapture.Exception.GetType().FullName 
   Write-Host "`nException Type: `n$errorExceptionType"
-  $errorExceptionMsg = $errorStackException | Out-String
-  $errorExceptionMsg = $errorExceptionMsg.Replace("`n","").Replace("`r","")
+  $errorExceptionId = $ErrorCapture.Exception.ErrorId
+  Write-Host "`nException ID: `n$errorExceptionId"
+  $errorExceptionMsg = $ErrorCapture.Exception.Message
+  $errorInvocationLineNumber= $ErrorCapture.InvocationInfo.ScriptLineNumber
   Write-Host "`nException Message: `n$errorExceptionMsg"
-  $errorInvocationName = $errorStackInvocationInfo.MyCommand.Name | Out-String
-  $errorInvocationName = $errorInvocationName.Replace("`n","").Replace("`r","")
-  Write-Host "`nPowerShell Command Info:`n$errorInvocationName"
+  Write-Host "`nException occured at script line $errorInvocationLineNumber"
+  $errorInvocationFullScriptLine = $ErrorCapture.InvocationInfo.Line
+  Write-Host "`nFull script line: `n$($errorInvocationFullScriptLine.trim())"
   <# Write Output to log file? #>
   If ($writeToLogFile.IsPresent)
   {
     If ([string]::IsNullOrEmpty($LogFilePath))
     {
-      Write-Host -ForegroundColor Yellow "`n No log file defined, please use the `'-LogFilePath`' parameter to define a log file"
+      Write-Host -ForegroundColor Yellow "`n INFO: No log file defined, using `$envUserProfile\Documents\"
     }
     ELSE
     {
@@ -159,7 +197,7 @@ Function Get-ErrorHandling{
   If ($exceptionAllowed -ne $true ) 
   {
     Write-Host -ForegroundColor Red "`n** HALTING SCRIPT  **"
-    Write-Host "`n************** HALTING **************`n"
+    Write-Host "`n*** HALTING ***`n"
     # Do other this before we halt the script such as email log files etc
     BREAK
   }  
@@ -182,7 +220,7 @@ Function Get-ErrorHandling{
     Write-Host -ForegroundColor Yellow "`nCode error at line and postion: `n"
     $SCRIPT:errorStackInvocationInfo.PositionMessage 
   }
-  Function Write-LogFullStackError {
+  Function Write-ErrorToLogs {
     <#
       .SYNOPSIS
         Formats and write the full error as a readble and formatted text item to add to a text or log file
@@ -216,4 +254,4 @@ Function Get-ErrorHandling{
   }
 Export-ModuleMember -Function 'Invoke-LogfileRotate'
 Export-ModuleMember -Function 'Write-Logfile'
-Export-ModuleMember -Function 'Get-ErrorHandling'
+Export-ModuleMember -Function 'Get-EventHandling'
