@@ -23,13 +23,13 @@
     # Author of this module
     Author = 'Matt Gane'
     # Company or vendor of this module
-    CompanyName = 'Unknown'
+    CompanyName = 'Atomic-Spoon'
     
     # Copyright statement for this module
     Copyright = '(c) 2020 Matt Gane. All rights reserved.'
     
     # Description of the functionality provided by this module
-    Description = 'Provides error handling and outout formatting for screen and logfile. Uses PowerShells native Try, Catch, Finally functionity'
+    Description = 'Provides logging and error handling. provides output formatting for screen and logfile. Uses PowerShells native "Try", "Catch", "Finally" functionity'
     
     # Minimum version of the Windows PowerShell engine required by this module
     PowerShellVersion = '5.1'

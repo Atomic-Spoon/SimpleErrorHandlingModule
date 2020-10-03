@@ -2,99 +2,109 @@ Function Invoke-LogfileRotate{
     <#
       .SYNOPSIS
       
-        Performs log roatation.
+        Performs log file roatation. Work with .log, .txt, and .zip files. 
   
       .DESCRIPTION
   
-        Log roation Function, looks for any file in the defined path with ".txt" or ".log" and archives (zips) any files older than 14 days
-        Any archive files are deleted after 30 days.
-  
+        Log roation Function, looks for any file in the defined path with ".txt" or ".log" and archives (zips) any files older than 21 days
+        Any archive files are deleted after 60 days.
+
+        These numbers (days) were chosen what would be suitble for most roles and changing there value won't break anything. 
+        
+        The idea is to stop any logging action taken by this module from eating all the disk space over time without too much editing.
+      
+      .PARAMETER LogFileRootFolder (Required)
+       
+        The path of log file root folder, required to find files to archive and delete.
+      
+      .EXAMPLE
+      
+        Invoke-LogFileRotate -LogFileRootFolder C:\Folder\AnotherFolder\Logs
     #>
     [CmdletBinding()]
     Param(
-      [string]$LogFileFolderPath
+      [Parameter(Mandatory=$true,ValueFromPipeline=$true)][string]$LogFileRootFolder
     
     )  
-      $filesToArchive = Get-ChildItem -Path "$LogFileFolderPath" -Recurse | Where-Object {$_.Extension -eq ".txt" -or $_.Extension -eq ".log" }
-      $filesAgeByCreateDate = $filesToArchive | Where-Object CreationTime -lt (Get-Date).AddDays(-14)
+      $filesToArchive = Get-ChildItem -Path "$LogFileRootFolder" -Recurse | Where-Object {$_.Extension -eq ".txt" -or $_.Extension -eq ".log" }
+      $filesAgeByCreateDate = $filesToArchive | Where-Object CreationTime -lt (Get-Date).AddDays(-21)
       ForEach ($fileItem in $filesAgeByCreateDate){
         #Get the file name minus it's extension to use as the archive filename   
         $destFileName = $fileItem|Select-Object -ExpandProperty BaseName
-        Compress-Archive -Path "$LogFileFolderPath\$fileItem" -DestinationPath "$LogFileFolderPath\$destFileName.zip"
-        Remove-Item -Path "$LogFileFolderPath\$fileItem"
+        Compress-Archive -Path "$LogFileRootFolder\$fileItem" -DestinationPath "$LogFileRootFolder\$destFileName.zip"
+        Remove-Item -Path "$LogFileRootFolder\$fileItem"
       }
       $archivedFilesLookup = Get-ChildItem -Path "$rootLogFilePath" -Recurse | Where-Object {$_.Extension -eq ".zip"}
-      $archivedFilesAgeByCreateDate = $archivedFilesLookup | Where-Object CreationTime -lt (Get-Date).AddDays(-30)
+      $archivedFilesAgeByCreateDate = $archivedFilesLookup | Where-Object CreationTime -lt (Get-Date).AddDays(-60)
       ForEach ($archivedFileAgeByCreateDate in $archivedFilesAgeByCreateDate){
-        Remove-Item -Path "$LogFileFolderPath\$archivedFileAgeByCreateDate"
+        Remove-Item -Path "$LogFileRootFolder\$archivedFileAgeByCreateDate"
     }
   }
   Function Write-Logfile{
       <#
         .SYNOPSIS
-          Performs log file writes.
+          Performs log (or txt) file writes.
   
         .DESCRIPTION
-          Writes to log file
+          Writes to a .log file or .txt file, with the string value captured by the -LoggingTextString parameter
   
-        .PARAMETER LogFilePath (Required)
+        .PARAMETER LogFilePath
   
-          Mandatory parameter, this value can be a hardcoded path (c:\folder1\folder2\file.log) or a varible set in script ($logFile), but it
+          [Mandatory parameter] This value can be a hardcoded path (c:\folder1\folder2\file.log) or a varible set in script ($logFile), but it
           MUST PRECEDE the log file string/output.
   
-        .PARAMETER loggingTextString (Required)
+        .PARAMETER loggingTextString
   
-          The text or string output to append to the log file, the contents of a output, string or captured error message.
+          [Mandatory parameter] The text or string output to append to the log file, the contents of a output, string or captured error message.
           
           Does not require -LoggingTextString to be present just the text within quotes ("text and stuff")
-
-        .PARAMETER WarningItem (Optional)
-
-          Adds a warning header before adding the string to the log, this is for items which may not be a good result but are not a script error, 
-          such as returning a null value or access was missing for the script to fully operate etc 
-  
-        .EXAMPLE
-          -------------------------- EXAMPLE 1 --------------------------
-          The following shows how you can use Write-LogFile log the start time of a script start, using the cmdlet Get-Date as part of the string.
-  
-          This will append to the file "file.log" with the string value with the time and date returned by Get-Date:
-          i.e. "Script started 1/04/2020 10:41:43 PM"
-  
-          Write-LogFile -logFilePath c:\temp\logs\file.log "Script started $((Get-Date).tostring("yyyyMMdd-HHmmss"))"
         
-        .EXAMPLE
-          -------------------------- EXAMPLE 2 --------------------------
-          The following shows how you can add a warning header to  log to easily find items that may be of concern:
-          i.e.  "************** WARNING **************
-                Warning: Get-Item value for $itemObject is empty or returned $null"
+        .PARAMETER AddTimeStamp
 
-          If ([string]::IsNullOrEmpty($itemObject)){
-            $loggingCustomWarning = "Warning: Get-Item value for `$itemObject is empty or returned `$null"
-            Write-Logfile -logFilePath $logFilePath "$loggingCustomWarning" -WarningItem
+          [Optional parameter] This switch tells the Write-Logfile function to add a Date Time stamp to the log file entry
+
+          Outputs the result in the following format: dd-MM-yyyy HH:mm:ss
+
+        .EXAMPLE
+
+          The following shows how you can use Write-LogFile to log a script or module being started, and using -AddTimeStamp we can prefix the log entry with the date and time without making "Get-Date" plus formatting calls in the script.
+
+          Write-Logfile -LogFilePath "$env:UserProfile\Documents\timestamp-test.txt" -LoggingTextString "Script started" -AddTimeStamp
+      
+      
       #>
       [CmdletBinding()]
       Param(
-        [switch]$WarningItem,
-        [string]$LoggingTextString,
+        [Parameter(Mandatory=$true,ValueFromPipeline=$true)][string]$LoggingTextString,
         [Parameter(Mandatory=$true,ValueFromPipeline=$true)][string]$LogFilePath,
-        [Parameter(Mandatory=$false,ValueFromPipeline=$true)][string]$errorTimeStamp
+        [Parameter(Mandatory=$false,ValueFromPipeline=$true)][switch]$AddTimeStamp
       )
-      If ($WarningItem.IsPresent) {
-        Add-Content -Path $LogFilePath -Value "`r`n************** WARNING **************"
+      Add-Content -Path $LogFilePath -Value "`n"
+      If ($AddTimeStamp.IsPresent){
+        $eventTimeStamp = $((Get-Date).tostring("dd-MM-yyyy HH:mm:ss"))
+        Add-content -Path $LogFilePath -value "$eventTimeStamp $loggingTextString"
+      } 
+      Else 
+      {
+        Add-content -Path $LogFilePath -value $loggingTextString
       }
-      Add-Content -Path $LogFilePath -Value "`r`n"
-      Add-content -Path $LogFilePath -value $loggingTextString
     }
 Function Get-EventHandling{
   <#
     .SYNOPSIS
 
-    .DESCRIPTION
-      Error reporting and handling. The function is called when a Try,Catch results in a exception. 
-      The function grabs the last error object from the PowerShell error stack (which is $Error[0],
-      The second to last error object is $Error[1], the next (third) is $Error[2] etc.)
+      Error\Event reporting and handling. Events are displayed in a more readable fashion. Optional calls to record events to a log file also exist 
 
-      Uses PowerShells native "Try, Catch, Finally" functionality:
+    .DESCRIPTION
+
+      Error reporting and handling. The function is called when a Try,Catch results in a exception.
+
+      The function grabs the last error object from the PowerShell error stack (which is either $_ (the current item in the eror stack) or which is $Error[0] the newest addition to the error stack.
+      
+      NOTE: The last (newest) item of the PS error stack is $Error[0], the second to last error object is $Error[1], the next (third) is $Error[2] etc.
+
+      Using PowerShells native "Try, Catch, Finally" functionality Get-EventHandling is called within the "Catch" statement (see examples):
+
         Try {
           Do Something
         } 
@@ -104,8 +114,16 @@ Function Get-EventHandling{
         Finally {
           Follow up action  
         }
+
     .PARAMETER ErrorCatch
-     (Mandatery) Needs to = $Error[0], I'll look for a cleaner method later
+
+      [Mandatery] Needs to equal "$_" or "$Error[0]". The current\last item written to the error stack.
+
+    .PARAMETER WriteToLogFile
+
+      [Optional] Enables the passin g of the event\error to a designated log file
+
+      NOTE: If no logfile path is defined (LogFilePath paraameter (see below)) the module will write to to $env:UserProfile\Documents\
 
       Get-EventHandling -logFilePath $logFilePath -$ErrorExceptionCatch $_.Exception -ErrorInvocationInfoCatch $_.InvocationInfo
 
@@ -114,8 +132,10 @@ Function Get-EventHandling{
       Adding "-ExceptionAllowed" in the command will allow the script to continue if you feel the error is recoverable:
       
       Get-EventHandling -logFilePath $logFilePath -$ErrorExceptionCatch $_.Exception -ErrorInvocationInfoCatch $_.InvocationInfo -ExceptionAllowed
+
     .EXAMPLE
-      The basic way to catch a script/module exception is to tell Get-EventHandling to catch the last error written to the PS error stack ($error[0]):
+
+      The basic way to catch a script/module exception is to tell Get-EventHandling to catch the current error written to the PS error stack ($_):
 
       Try
       {
@@ -123,14 +143,16 @@ Function Get-EventHandling{
       }
       Catch
       {
-        Get-EventHandling -ErrorCatch $Error[0]
-      } 
+        Get-EventHandling -ErrorCatch $_
+      }
+
     .EXAMPLE
+
       If you wish to add more parameters to use with Get-EventHandling you can "splat" your parameters as a hash-table and and call the hash-table whenever you invoke Get-EventHandling:
 
       #Splat those params!
       $eventParameters = @{
-        ErrorCapture = "$error[0]""
+        ErrorCapture = "$error[0]"
         LogFilePath = "$env:UserProfile\Documents\myLogFile.log" 
       }
       Try
@@ -141,7 +163,11 @@ Function Get-EventHandling{
       {
         Get-EventHandling @eventParameters
       }
+
+      NOTE: To catch the last error written to the PS error stack use you can use $error[0] or $_.
+
     .EXAMPLE
+
       Adding the "-ExceptionAllowed" parameter in the command will allow the script to continue should you feel the exception would be recoverable and rhe script can still complete it's run:
 
             Try
@@ -157,10 +183,9 @@ Function Get-EventHandling{
     [Parameter(Mandatory=$false,ValueFromPipeline=$true)][switch]$exceptionAllowed,
     [Parameter(Mandatory=$false,ValueFromPipeline=$true)][switch]$writeToLogFile,
     [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$LogFilePath,
-    [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$ErrorCapture,
-    [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$InvocationInfoCatch,
-    [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$ErrorExceptionCatch
+    [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$ErrorCapture
   )
+  $eventTimeStamp = $((Get-Date).tostring("dd-MM-yyyy HH:mm:ss"))
   $isItFatalDoc = If ($exceptionAllowed.IsPresent)
   {
     "RECOVERABLE ERROR"
@@ -178,80 +203,50 @@ Function Get-EventHandling{
   $errorExceptionMsg = $ErrorCapture.Exception.Message
   $errorInvocationLineNumber= $ErrorCapture.InvocationInfo.ScriptLineNumber
   Write-Host "`nException Message: `n$errorExceptionMsg"
-  Write-Host "`nException occured at script line $errorInvocationLineNumber"
+  Write-Host "`nException in script\command, within line $errorInvocationLineNumber"
   $errorInvocationFullScriptLine = $ErrorCapture.InvocationInfo.Line
-  Write-Host "`nFull script line: `n$($errorInvocationFullScriptLine.trim())"
-  <# Write Output to log file? #>
+  Write-Host "`nFull line of script\code involved: `n$($errorInvocationFullScriptLine.trim())"
+  <# Write Output to log file or not? #>
   If ($writeToLogFile.IsPresent)
   {
     If ([string]::IsNullOrEmpty($LogFilePath))
     {
-      Write-Host -ForegroundColor Yellow "`n INFO: No log file defined, using `$envUserProfile\Documents\"
+      Write-Host -ForegroundColor Yellow "`n INFO: No log file path defined, using $env:UserProfile\Documents\EventHandlingOuput-yyyyyMMdd-HHmmss.txt"
+      $fileDateStamp = $((Get-Date).tostring("yyyyMMdd-HHmmss"))
+      $autoFileName = "EventHandlingOuput-$fileDateStamp.txt"
+      $LogFilePath = "$env:UserProfile\Documents\$autoFileName"
     }
-    ELSE
-    {
-      
-    }
+    $errorCommandInfo = $ErrorCapture.InvocationInfo.MyCommand
+    Write-Logfile -logFilePath $LogFilePath "`n$EventTimeStamp : $isItFatalDoc ENCOUNTERED"
+    Write-Logfile -logFilePath $LogFilePath "*** $isItFatalDoc DETAILS ***"
+    Write-Logfile -logFilePath $LogFilePath "Exception Message: `n$errorExceptionMsg"
+    Write-Logfile -LogFilePath $LogFilePath "Exception Reason: `n$($ErrorCapture.CategoryInfo.Reason)"
+    Write-Logfile -LogFilePath $LogFilePath "Exception occured at line $errorInvocationLineNumber"
+    Write-Logfile -LogFilePath $LogFilePath "Exception Type: `n$errorExceptionType"
+    Write-Logfile -LogFilePath $LogFilePath "Exception ID: `n$errorExceptionId"
+    Write-Logfile -logFilePath $LogFilePath "## PowerShell Module & Cmdlet Info ##"
+    $errorInvocationName = $errorCommandInfo.Name
+    Write-Logfile -logFilePath $LogFilePath "PowerShell cmdlet = $errorInvocationName"
+    $major = $errorCommandInfo.Version.Major
+    $minor = $errorCommandInfo.Version.Minor
+    $build = $errorCommandInfo.Version.Build
+    $cmdletVersion = "$major"+'.'+"$minor"+'.'+"$build"
+    Write-Logfile -logFilePath $LogFilePath  "Version = $cmdletVersion"
+    $powerShellSource = $errorCommandInfo.Source
+    Write-Logfile -logFilePath $LogFilePath "Source PS Module = $powerShellSource"
+    $errorCommandInfo
   }
   <# Exit or continue? #>
   If ($exceptionAllowed -ne $true ) 
   {
-    Write-Host -ForegroundColor Red "`n** HALTING SCRIPT  **"
-    Write-Host "`n*** HALTING ***`n"
+    Write-Host -ForegroundColor Red "`n*** HALTING SCRIPT  ***"
+    Write-Host "`n## HALTING ##`n"
     # Do other this before we halt the script such as email log files etc
     BREAK
+  } ELSE {
+
   }  
 } 
-  Function Write-HostReadableError {
-    <#
-      .SYNOPSIS
-        Format and write the full error stack as a readble screen output
-
-        `n = An new line in either wtrting a string to file or to screen
-    #>
-    Write-Host -ForegroundColor Yellow "`n********** $isItFatalDoc DETAILS ********** "
-    Write-Host -ForegroundColor Yellow "`nException Type: `n"
-    $SCRIPT:errorStackException.GetType().FullName
-    Write-Host -ForegroundColor Yellow "`nException Message: `n"
-    $SCRIPT:errorStackException
-    Write-Host -ForegroundColor Yellow "`nPowerShell Command Info: `n"
-    $SCRIPT:errorStackInvocationInfo.MyCommand
-    #$scriptPosition = $SCRIPT:errorStackInvocationInfo.PositionMessage
-    Write-Host -ForegroundColor Yellow "`nCode error at line and postion: `n"
-    $SCRIPT:errorStackInvocationInfo.PositionMessage 
-  }
-  Function Write-ErrorToLogs {
-    <#
-      .SYNOPSIS
-        Formats and write the full error as a readble and formatted text item to add to a text or log file
-
-        This involves some crazy formatting PS code due to the fact PowerShell formatted outputs such as table views
-        will output horribly to a text or log file.
-
-        `n = A new line in either wtrting a string to file or to screen
-        `r = A new line in either wtrting a string to file or to screen on legacy text editors such as notepad.exe
-    #>
-    Write-Logfile -logFilePath $LogFilePath "`r`n********** $isItFatalDoc DETAILS ********** "
-    $errorExceptionType = $SCRIPT:errorStackException.GetType().FullName | Out-String
-    $errorExceptionType = $errorExceptionType.Replace("`n","").Replace("`r","")
-    Write-Logfile -logFilePath $LogFilePath "`r`nException Type: `n$errorExceptionType"
-    $errorExceptionMsg = $SCRIPT:errorStackException | Out-String
-    $errorExceptionMsg = $errorExceptionMsg.Replace("`n","").Replace("`r","")
-    Write-Logfile -logFilePath $LogFilePath "`r`nException Message: `n$errorExceptionMsg"
-    $errorInvocationName = $SCRIPT:errorStackInvocationInfo.MyCommand.Name | Out-String
-    $errorInvocationName = $errorInvocationName.Replace("`n","").Replace("`r","")
-    Write-Logfile -logFilePath $$LogFilePath "`r`nPowerShell Command Info:`r`n$errorInvocationName"
-    $major = $SCRIPT:errorStackInvocationInfo.MyCommand.Version.Major
-    $minor = $SCRIPT:errorStackInvocationInfo.MyCommand.Version.Minor
-    $build = $SCRIPT:errorStackInvocationInfo.MyCommand.Version.Build
-    $cmdletVersion = "$major"+'.'+"$minor"+'.'+"$build"
-    Write-Logfile -logFilePath $LogFilePath  "Version = $cmdletVersion"
-    $powerShellSource = $SCRIPT:errorStackInvocationInfo.MyCommand.Source
-    Write-Logfile -logFilePath $LogFilePath "Source: $powerShellSource"
-    $errorInvocationPosition = $SCRIPT:errorStackInvocationInfo.PositionMessage | Out-String
-    $errorInvocationPosition = $errorInvocationPosition 
-    Write-Logfile -logFilePath $LogFilePath "`r`nCode error at line and postion: `r`n$errorInvocationPosition"
-  }
 Export-ModuleMember -Function 'Invoke-LogfileRotate'
 Export-ModuleMember -Function 'Write-Logfile'
 Export-ModuleMember -Function 'Get-EventHandling'
