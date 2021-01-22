@@ -12,7 +12,7 @@
     RootModule = 'SimpleEventHandling.psm1'
     
     # Version number of this module.
-    ModuleVersion = '0.9'
+    ModuleVersion = '1.0'
     
     # Supported PSEditions
     CompatiblePSEditions = 'Desktop', 'Core'
@@ -29,10 +29,10 @@
     Copyright = '(c) 2020 Matt Gane. All rights reserved.'
     
     # Description of the functionality provided by this module
-    Description = 'Provides logging and error handling. provides output formatting for screen and logfile. Uses PowerShells native "Try", "Catch", "Finally" functionity'
+    Description = 'Provides logging and error handling. Uses PowerShells native "Try", "Catch", "Finally" functionity to catch errors and write them to a log file.'
     
     # Minimum version of the Windows PowerShell engine required by this module
-    PowerShellVersion = '5.1'
+    PowerShellVersion = '5.0'
     
     # Name of the Windows PowerShell host required by this module
     # PowerShellHostName = ''
@@ -71,8 +71,9 @@
     #FunctionsToExport = @()
     FunctionsToExport = '*' 
     
-    # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
-    CmdletsToExport = '*'
+    # Cmdlets to export from module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
+    # CmdletsToExport = '*'
+    CmdletsToExport = 'Get-EventHandling','Write-Logfile','Invoke-LogfileRotate'
     
     # Variables to export from this module
     VariablesToExport = '*'
