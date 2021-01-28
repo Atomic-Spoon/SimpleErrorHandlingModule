@@ -1,5 +1,5 @@
 
-Function Get-EventHandling{
+Function Invoke-ErrorHandling{
     <#
       .SYNOPSIS
   
@@ -13,7 +13,7 @@ Function Get-EventHandling{
         
         NOTE: The last (newest) item of the PS error stack is $Error[0], the second to last error object is $Error[1], the next (third) is $Error[2] etc.
   
-        Using PowerShells native "Try, Catch, Finally" functionality Get-EventHandling is called within the "Catch" statement (see examples):
+        Using PowerShells native "Try, Catch, Finally" functionality Invoke-ErrorHandling is called within the "Catch" statement (see examples):
   
           Try {
             Do Something
@@ -35,17 +35,17 @@ Function Get-EventHandling{
   
         NOTE: If no logfile path is defined (LogFilePath paraameter (see below)) the module will write to to $env:UserProfile\Documents\
   
-        Get-EventHandling -logFilePath $logFilePath -$ErrorExceptionCatch $_.Exception -ErrorInvocationInfoCatch $_.InvocationInfo
+        Invoke-ErrorHandling -logFilePath $logFilePath -$ErrorExceptionCatch $_.Exception -ErrorInvocationInfoCatch $_.InvocationInfo
   
         This will catch the last error in the error stack and write a readable error output to the screen and logfile, and then halt the script.
   
         Adding "-ExceptionAllowed" in the command will allow the script to continue if you feel the error is recoverable:
         
-        Get-EventHandling -logFilePath $logFilePath -$ErrorExceptionCatch $_.Exception -ErrorInvocationInfoCatch $_.InvocationInfo -ExceptionAllowed
+        Invoke-ErrorHandling -logFilePath $logFilePath -$ErrorExceptionCatch $_.Exception -ErrorInvocationInfoCatch $_.InvocationInfo -ExceptionAllowed
   
       .EXAMPLE
   
-        The basic way to catch a script/module exception is to tell Get-EventHandling to catch the current error written to the PS error stack ($_):
+        The basic way to catch a script/module exception is to tell Invoke-ErrorHandling to catch the current error written to the PS error stack ($_):
   
         Try
         {
@@ -53,12 +53,12 @@ Function Get-EventHandling{
         }
         Catch
         {
-          Get-EventHandling -ErrorCatch $_
+          Invoke-ErrorHandling -ErrorCatch $_
         }
   
       .EXAMPLE
   
-        If you wish to add more parameters to use with Get-EventHandling you can "splat" your parameters as a hash-table and and call the hash-table whenever you invoke Get-EventHandling:
+        If you wish to add more parameters to use with Invoke-ErrorHandling you can "splat" your parameters as a hash-table and and call the hash-table whenever you invoke Invoke-ErrorHandling:
   
         #Splat those params!
         $eventParameters = @{
@@ -71,7 +71,7 @@ Function Get-EventHandling{
         }
         Catch
         {
-          Get-EventHandling @eventParameters
+          Invoke-ErrorHandling @eventParameters
         }
   
         NOTE: To catch the last error written to the PS error stack use you can use $error[0] or $_.
@@ -80,20 +80,20 @@ Function Get-EventHandling{
   
         Adding the "-ExceptionAllowed" parameter in the command will allow the script to continue should you feel the exception would be recoverable and rhe script can still complete it's run:
   
-              Try
+        Try
         {
           Get-ADUser -justaFakeParam
         }
         Catch
         {
-          Get-EventHandling -ErrorCatch $Error[0] -ExceptionAllowed
+          Invoke-ErrorHandling -ErrorCatch $Error[0] -ExceptionAllowed
         } 
     #>
     Param(
       [Parameter(Mandatory=$false,ValueFromPipeline=$true)][switch]$exceptionAllowed,
       [Parameter(Mandatory=$false,ValueFromPipeline=$true)][switch]$writeToLogFile,
       [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$LogFilePath,
-      [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$ErrorCapture
+      [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$ErrorCatch
     )
     $eventTimeStamp = $((Get-Date).tostring("dd-MM-yyyy HH:mm:ss"))
     $isItFatalDoc = If ($exceptionAllowed.IsPresent)
@@ -106,15 +106,15 @@ Function Get-EventHandling{
     }
     Write-Host -ForegroundColor Red "`n*** ENCOUNTERED $isItFatalDoc ***`n"
     Write-Host "`n### $isItFatalDoc DETAILS ###"
-    $errorExceptionType = $ErrorCapture.Exception.GetType().FullName 
+    $errorExceptionType = $ErrorCatch.Exception.GetType().FullName 
     Write-Host "`nException Type: `n$errorExceptionType"
-    $errorExceptionId = $ErrorCapture.Exception.ErrorId
+    $errorExceptionId = $ErrorCatch.Exception.ErrorId
     Write-Host "`nException ID: `n$errorExceptionId"
-    $errorExceptionMsg = $ErrorCapture.Exception.Message
-    $errorInvocationLineNumber= $ErrorCapture.InvocationInfo.ScriptLineNumber
+    $errorExceptionMsg = $ErrorCatch.Exception.Message
+    $errorInvocationLineNumber= $ErrorCatch.InvocationInfo.ScriptLineNumber
     Write-Host "`nException Message: `n$errorExceptionMsg"
     Write-Host "`nException in script\command, within line $errorInvocationLineNumber"
-    $errorInvocationFullScriptLine = $ErrorCapture.InvocationInfo.Line
+    $errorInvocationFullScriptLine = $ErrorCatch.InvocationInfo.Line
     Write-Host "`nFull line of script\code involved: `n$($errorInvocationFullScriptLine.trim())"
     <# Write Output to log file or not? #>
     If ($writeToLogFile.IsPresent)
@@ -126,11 +126,11 @@ Function Get-EventHandling{
         $autoFileName = "EventHandlingOuput-$fileDateStamp.txt"
         $LogFilePath = "$env:UserProfile\Documents\$autoFileName"
       }
-      $errorCommandInfo = $ErrorCapture.InvocationInfo.MyCommand
+      $errorCommandInfo = $ErrorCatch.InvocationInfo.MyCommand
       Write-Logfile -logFilePath $LogFilePath "`n$EventTimeStamp : $isItFatalDoc ENCOUNTERED"
       Write-Logfile -logFilePath $LogFilePath "*** $isItFatalDoc DETAILS ***"
       Write-Logfile -logFilePath $LogFilePath "Exception Message: `n$errorExceptionMsg"
-      Write-Logfile -LogFilePath $LogFilePath "Exception Reason: `n$($ErrorCapture.CategoryInfo.Reason)"
+      Write-Logfile -LogFilePath $LogFilePath "Exception Reason: `n$($ErrorCatch.CategoryInfo.Reason)"
       Write-Logfile -LogFilePath $LogFilePath "Exception occured at line $errorInvocationLineNumber"
       Write-Logfile -LogFilePath $LogFilePath "Exception Type: `n$errorExceptionType"
       Write-Logfile -LogFilePath $LogFilePath "Exception ID: `n$errorExceptionId"
@@ -157,4 +157,4 @@ Function Get-EventHandling{
   
     }  
   } 
-  Export-ModuleMember -Function 'Get-EventHandling'
+  Export-ModuleMember -Function 'Invoke-ErrorHandling'
