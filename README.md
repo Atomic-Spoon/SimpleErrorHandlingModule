@@ -1,1 +1,1 @@
-# SimpleEventHandling
+# SimpleErrorHandling
