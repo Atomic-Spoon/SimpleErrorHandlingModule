@@ -13,13 +13,20 @@ Function Invoke-LogfileRotate{
         
         The idea is to stop any logging action taken by this module from eating all the disk space over time without too much editing.
       
-      .PARAMETER LogFileRootFolder (Required)
+      .PARAMETER LogFileRootFolder 
        
-        The path of log file root folder, required to find files to archive and delete.
+        [Mandatory] The path of log file root folder, required to find files to archive and delete.
       
       .EXAMPLE
       
         Invoke-LogFileRotate -LogFileRootFolder C:\Folder\AnotherFolder\Logs
+
+      .NOTES  
+        File Name  : Invoke-LogfileRotate
+        Authors    : Matt Gane
+        Requires   : PowerShell version 5.0 or greater
+        Version    : 1.0 - 8th July 2019: It rotates the files
+        History    : 
     #>
     [CmdletBinding()]
     Param(

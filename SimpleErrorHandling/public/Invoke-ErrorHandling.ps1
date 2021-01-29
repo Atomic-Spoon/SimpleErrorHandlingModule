@@ -3,17 +3,15 @@ Function Invoke-ErrorHandling{
     <#
       .SYNOPSIS
   
-        Error\Event reporting and handling. Events are displayed in a more readable fashion. Optional calls to record events to a log file also exist 
+        Error\Event reporting and handling. Errors are displayed in a more readable fashion. Optional parameters to also record errors to a log file.
   
       .DESCRIPTION
   
-        Error reporting and handling. The function is called when a Try,Catch results in a exception.
+        Error reporting and handling. The function is called when used with PowerShell's "Try,Catch" functionality.
   
-        The function grabs the last error object from the PowerShell error stack (which is either $_ (the current item in the eror stack) or which is $Error[0] the newest addition to the error stack.
+        The function grabs the most recent current error object items from the PowerShell error stack.
         
-        NOTE: The last (newest) item of the PS error stack is $Error[0], the second to last error object is $Error[1], the next (third) is $Error[2] etc.
-  
-        Using PowerShells native "Try, Catch, Finally" functionality Invoke-ErrorHandling is called within the "Catch" statement (see examples):
+        Using PowerShell's native "Try, Catch, Finally" functionality Invoke-ErrorHandling is called within the "Catch" statement (see examples for more info):
   
           Try {
             Do Something
@@ -25,27 +23,25 @@ Function Invoke-ErrorHandling{
             Follow up action  
           }
   
-      .PARAMETER ErrorCatch
-  
-        [Mandatery] Needs to equal "$_" or "$Error[0]". The current\last item written to the error stack.
-  
       .PARAMETER WriteToLogFile
   
-        [Optional] Enables the passin g of the event\error to a designated log file
+        [Optional] Writes the reported error to a designated log file, this also adds verbose info regarding the PS cmdlet that was at fault.
   
-        NOTE: If no logfile path is defined (LogFilePath paraameter (see below)) the module will write to to $env:UserProfile\Documents\
+        NOTE: If no logfile path is defined (using the -LogFilePath paraameter - see below) the module will write to to a auto-generated file in $env:UserProfile\Documents\
   
-        Invoke-ErrorHandling -logFilePath $logFilePath -$ErrorExceptionCatch $_.Exception -ErrorInvocationInfoCatch $_.InvocationInfo
-  
-        This will catch the last error in the error stack and write a readable error output to the screen and logfile, and then halt the script.
-  
-        Adding "-ExceptionAllowed" in the command will allow the script to continue if you feel the error is recoverable:
+      .PARAMETER LogfilePath  
         
-        Invoke-ErrorHandling -logFilePath $logFilePath -$ErrorExceptionCatch $_.Exception -ErrorInvocationInfoCatch $_.InvocationInfo -ExceptionAllowed
+        [Optional] The path to a desired log file, used with the -WriteToLogFile option, if the log file path is not defined then the module will write to to a auto-generated file in $env:UserProfile\Documents\ 
+  
+        
+      .PARAMETER FatalError 
+      
+        [Optional] If the FatalError switch is used, the script will halt/break. If not used the module will allow the script to continue. 
   
       .EXAMPLE
   
-        The basic way to catch a script/module exception is to tell Invoke-ErrorHandling to catch the current error written to the PS error stack ($_):
+        The basic way to catch a PS script error is to just add the  Invoke-ErrorHandling cmdlet into the "Catch" statement when using PowerShell's native "Try,Catch" functionality.
+        By default Invoke-ErrorHandling cmdlet the most recent error stack items written to the PS error stack:
   
         Try
         {
@@ -53,104 +49,138 @@ Function Invoke-ErrorHandling{
         }
         Catch
         {
-          Invoke-ErrorHandling -ErrorCatch $_
+          Invoke-ErrorHandling
         }
+
+        *** ENCOUNTERED RECOVERABLE ERROR ***
+
+        RECOVERABLE ERROR DETAILS:
+
+        ExceptionMessage    : A parameter cannot be found that matches parameter name 'justaFakeParam'.
+        FullScriptTextLine  : Get-ADUser -justaFakeParam
+        ExceptionType       : ParameterBindingException
+        ExceptionID         : NamedParameterNotFound
+        ExceptionLineNumber : 3
   
       .EXAMPLE
   
-        If you wish to add more parameters to use with Invoke-ErrorHandling you can "splat" your parameters as a hash-table and and call the hash-table whenever you invoke Invoke-ErrorHandling:
-  
-        #Splat those params!
-        $eventParameters = @{
-          ErrorCapture = "$error[0]"
-          LogFilePath = "$env:UserProfile\Documents\myLogFile.log" 
-        }
-        Try
-        {
-          Get-ADUser -justaFakeParam
-        }
-        Catch
-        {
-          Invoke-ErrorHandling @eventParameters
-        }
-  
-        NOTE: To catch the last error written to the PS error stack use you can use $error[0] or $_.
-  
-      .EXAMPLE
-  
-        Adding the "-ExceptionAllowed" parameter in the command will allow the script to continue should you feel the exception would be recoverable and rhe script can still complete it's run:
+        To add the error details to a logfile, use the -WriteToLogFile parameter: 
   
         Try
         {
-          Get-ADUser -justaFakeParam
+          Get-ADUser -justaLoggingFakeParam
         }
         Catch
         {
-          Invoke-ErrorHandling -ErrorCatch $Error[0] -ExceptionAllowed
+          Invoke-ErrorHandling -WriteToLogFile
         } 
+  
+        *** ENCOUNTERED RECOVERABLE ERROR ***
+
+        RECOVERABLE ERROR DETAILS:
+
+        ExceptionMessage    : A parameter cannot be found that matches parameter name 'justaLoggingFakeParam'.
+        FullScriptTextLine  : Get-ADUser -justaLoggingFakeParam
+        ExceptionType       : ParameterBindingException
+        ExceptionID         : NamedParameterNotFound
+        ExceptionLineNumber : 3
+
+
+        INFO: No log file path defined, using autogenerated file path:
+        C:\Users\mattg\Documents\SimpleErrorHandling-LogOuput-20210128-212756.txt
+  
+      .EXAMPLE
+  
+        To make the script halt\break and stop running if it encountered an eror use the -FatalError parameter:
+  
+        Try
+        {
+          Get-ADUser -justaFatalFakeParam
+        }
+        Catch
+        {
+          Invoke-ErrorHandling -FatalError
+        } 
+        
+        
+        *** ENCOUNTERED FATAL ERROR ***
+
+        FATAL ERROR DETAILS:
+
+        ExceptionMessage    : A parameter cannot be found that matches parameter name 'justaFatalFakeParam'.
+        FullScriptTextLine  : Get-ADUser -justaFatalFakeParam
+        ExceptionType       : ParameterBindingException
+        ExceptionID         : NamedParameterNotFound
+        ExceptionLineNumber : 3
+
+
+        !!! HALTING SCRIPT  !!!
+
+        
+      .NOTES
+        File Name  : Invoke-ErrorHandling.ps1
+        Authors    : Matt Gane
+        Requires   : PowerShell version 5.x or greater
+        Version    : v1.4 - 28th Jan 2021: Simlified and made a couple of defaults\automatic options
     #>
     Param(
-      [Parameter(Mandatory=$false,ValueFromPipeline=$true)][switch]$exceptionAllowed,
-      [Parameter(Mandatory=$false,ValueFromPipeline=$true)][switch]$writeToLogFile,
-      [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$LogFilePath,
-      [Parameter(Mandatory=$false,ValueFromPipeline=$true)]$ErrorCatch
+      [Parameter(Mandatory=$false,ValueFromPipeline=$true)]
+      [switch]$FatalError,
+      [Parameter(Mandatory=$false,ValueFromPipeline=$true)]
+      [switch]$WriteToLogFile,
+      [Parameter(Mandatory=$false,ValueFromPipeline=$true)]
+      $LogFilePath
     )
-    $eventTimeStamp = $((Get-Date).tostring("dd-MM-yyyy HH:mm:ss"))
-    $isItFatalDoc = If ($exceptionAllowed.IsPresent)
+    $eventTimeStamp = Get-Date
+    $isItFatalDoc = If ($FatalError.IsPresent)
     {
-      "RECOVERABLE ERROR"
+      "FATAL ERROR"
     } 
     ELSE 
     {
-      "FATAL ERROR" 
+      "RECOVERABLE ERROR" 
     }
-    Write-Host -ForegroundColor Red "`n*** ENCOUNTERED $isItFatalDoc ***`n"
-    Write-Host "`n### $isItFatalDoc DETAILS ###"
-    $errorExceptionType = $ErrorCatch.Exception.GetType().FullName 
-    Write-Host "`nException Type: `n$errorExceptionType"
-    $errorExceptionId = $ErrorCatch.Exception.ErrorId
-    Write-Host "`nException ID: `n$errorExceptionId"
-    $errorExceptionMsg = $ErrorCatch.Exception.Message
-    $errorInvocationLineNumber= $ErrorCatch.InvocationInfo.ScriptLineNumber
-    Write-Host "`nException Message: `n$errorExceptionMsg"
-    Write-Host "`nException in script\command, within line $errorInvocationLineNumber"
-    $errorInvocationFullScriptLine = $ErrorCatch.InvocationInfo.Line
-    Write-Host "`nFull line of script\code involved: `n$($errorInvocationFullScriptLine.trim())"
+    <# Error items #>
+    $errorExceptionMsg = $_.Exception.Message
+    $errorExceptionType = $_.Exception.GetType().Name
+    $errorExceptionId = $_.Exception.ErrorId
+    $errorInvocationLineNumber= $_.InvocationInfo.ScriptLineNumber
+    $errorInvocationFullScriptLine = $_.InvocationInfo.Line
+    <# Screen output header#>
+    Write-Host -ForegroundColor Red "`n*** ENCOUNTERED $isItFatalDoc ***"
+    Write-Host "`n$isItFatalDoc DETAILS:`n"
+    <# Create a results hashtable to give some easy formatting #>
+    $ErrorHashTable = @{ExceptionMessage=$errorExceptionMsg;
+                        ExceptionType = $errorExceptionType;
+                        ExceptionID=$errorExceptionId;
+                        ExceptionLineNumber=$errorInvocationLineNumber;
+                        FullScriptTextLine=$($errorInvocationFullScriptLine.trim())}
+    [PSCustomObject]$ErrorHashTable
     <# Write Output to log file or not? #>
     If ($writeToLogFile.IsPresent)
     {
       If ([string]::IsNullOrEmpty($LogFilePath))
       {
-        Write-Host -ForegroundColor Yellow "`n INFO: No log file path defined, using $env:UserProfile\Documents\EventHandlingOuput-yyyyyMMdd-HHmmss.txt"
-        $fileDateStamp = $((Get-Date).tostring("yyyyMMdd-HHmmss"))
-        $autoFileName = "EventHandlingOuput-$fileDateStamp.txt"
+        $fileDateStamp = $(($eventTimeStamp).tostring("yyyyMMdd-HHmmss"))
+        $autoFileName = "SimpleErrorHandling-LogOuput-$fileDateStamp.txt"
         $LogFilePath = "$env:UserProfile\Documents\$autoFileName"
+        Write-Host -ForegroundColor Yellow "`nINFO: " -NoNewline
+        Write-Host "No log file path defined, using autogenerated file path:`n$LogFilePath`n"
       }
-      $errorCommandInfo = $ErrorCatch.InvocationInfo.MyCommand
-      Write-Logfile -logFilePath $LogFilePath "`n$EventTimeStamp : $isItFatalDoc ENCOUNTERED"
-      Write-Logfile -logFilePath $LogFilePath "*** $isItFatalDoc DETAILS ***"
-      Write-Logfile -logFilePath $LogFilePath "Exception Message: `n$errorExceptionMsg"
-      Write-Logfile -LogFilePath $LogFilePath "Exception Reason: `n$($ErrorCatch.CategoryInfo.Reason)"
-      Write-Logfile -LogFilePath $LogFilePath "Exception occured at line $errorInvocationLineNumber"
-      Write-Logfile -LogFilePath $LogFilePath "Exception Type: `n$errorExceptionType"
-      Write-Logfile -LogFilePath $LogFilePath "Exception ID: `n$errorExceptionId"
-      Write-Logfile -logFilePath $LogFilePath "## PowerShell Module & Cmdlet Info ##"
-      $errorInvocationName = $errorCommandInfo.Name
-      Write-Logfile -logFilePath $LogFilePath "PowerShell cmdlet = $errorInvocationName"
-      $major = $errorCommandInfo.Version.Major
-      $minor = $errorCommandInfo.Version.Minor
-      $build = $errorCommandInfo.Version.Build
-      $cmdletVersion = "$major"+'.'+"$minor"+'.'+"$build"
-      Write-Logfile -logFilePath $LogFilePath  "Version = $cmdletVersion"
-      $powerShellSource = $errorCommandInfo.Source
-      Write-Logfile -logFilePath $LogFilePath "Source PS Module = $powerShellSource"
-      $errorCommandInfo
+      $errorCommandInfo = $_.InvocationInfo.MyCommand
+      <# Write logfile header #>
+      Write-Logfile -logFilePath $LogFilePath "`n$(($eventTimeStamp).tostring("dd/MM/yyyy-HH:mm:ss")):`t$isItFatalDoc ENCOUNTERED"
+      Write-Logfile -logFilePath $LogFilePath "`n*** Error details: ***`n"
+      [PSCustomObject]$ErrorHashTable | Out-String | Write-Logfile -logFilePath $LogFilePath  
+      Write-Logfile -logFilePath $LogFilePath "PowerShell Cmdlet Infomation (verbose)`t$errorInvocationName"
+      $errorCommandInfo | Select-Object * | Out-String | Write-Logfile -logFilePath $LogFilePath  
+      #Write-Logfile -logFilePath $LogFilePath "SourcePSModule:`t$powerShellSource"
+      
     }
     <# Exit or continue? #>
-    If ($exceptionAllowed -ne $true ) 
+    If ($FatalError -eq $true ) 
     {
-      Write-Host -ForegroundColor Red "`n*** HALTING SCRIPT  ***"
-      Write-Host "`n## HALTING ##`n"
+      Write-Host -ForegroundColor Red "`n!!! HALTING SCRIPT  !!!"
       # Do other this before we halt the script such as email log files etc
       BREAK
     } ELSE {
