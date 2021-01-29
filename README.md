@@ -24,5 +24,5 @@ Each cmdlet has a full help information included that works with the *Get-Help* 
 
 ## Legal and Licensing
 
-SimpleErrorHandling is licensed under the [MIT license][https://github.com/Atomic-Spoon/SimpleErrorHandlingModule/blob/main/LICENSE.txt].
+SimpleErrorHandling is licensed under the [MIT license](https://github.com/Atomic-Spoon/SimpleErrorHandlingModule/blob/main/LICENSE.txt).
 
