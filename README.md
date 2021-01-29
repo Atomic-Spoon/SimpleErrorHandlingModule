@@ -24,6 +24,6 @@ Each cmdlet has a full help information included that works with the *Get-Help* 
 
 ## Legal and Licensing
 
-PowerShell is licensed under the [MIT license][].
+SimpleErrorHandling is licensed under the [MIT license][].
+[MIT license]: https://github.com/Atomic-Spoon/SimpleErrorHandlingModule/blob/main/LICENSE.txt
 
-[MIT license]: https://github.com/Atomic-Spoon/SimpleErrorHandlingModule/LICENSE.txt
