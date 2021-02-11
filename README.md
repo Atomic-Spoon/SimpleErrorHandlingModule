@@ -8,7 +8,7 @@
 
 ## Installation
 
-Download or clone the *SimpleErrorHandlingModule* repo and copy the *SimpleErrorHandling* folder with into:
+Download or clone the *SimpleErrorHandlingModule* repo and copy the *SimpleErrorHandling* folder within into:
   * WindowsPowerShell 5 - C:\Program Files\WindowsPowerShell\Modules
   * PowerShell Core 7 - C:\Program Files\PowerShell\7\Modules
   
