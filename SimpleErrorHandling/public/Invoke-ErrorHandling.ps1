@@ -141,11 +141,11 @@ Function Invoke-ErrorHandling{
       "RECOVERABLE ERROR" 
     }
     <# Error items #>
-    $errorExceptionMsg = $_.Exception.Message
-    $errorExceptionType = $_.Exception.GetType().Name
-    $errorExceptionId = $_.Exception.ErrorId
-    $errorInvocationLineNumber= $_.InvocationInfo.ScriptLineNumber
-    $errorInvocationFullScriptLine = $_.InvocationInfo.Line
+    If($null -ne $($_.Exception.Message)) {$errorExceptionMsg = $_.Exception.Message}
+    If($null -ne $($_.Exception.GetType().Name)) {$errorExceptionType = $_.Exception.GetType().Name}
+    If($null -ne $($_.Exception.ErrorId)) {$errorExceptionId = $_.Exception.ErrorId}
+    If($null -ne $($_.InvocationInfo.ScriptLineNumber)) {$errorInvocationLineNumber= $_.InvocationInfo.ScriptLineNumber}
+    If($null -ne $($_.InvocationInfo.Line)) {$errorInvocationFullScriptLine = $_.InvocationInfo.Line}
     <# Screen output header#>
     Write-Host -ForegroundColor Red "`n*** ENCOUNTERED $isItFatalDoc ***"
     Write-Host "`n$isItFatalDoc DETAILS:`n"
