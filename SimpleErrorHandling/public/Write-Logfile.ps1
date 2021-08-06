@@ -24,32 +24,36 @@ Function Write-Logfile{
 
       .EXAMPLE
 
+      
+      
+      .EXAMPLE
+
         The following shows how you can use Write-LogFile to log a script or module being started, and using -AddTimeStamp we can prefix the log entry with the date and time without making "Get-Date" plus formatting calls in the script.
 
-        Write-Logfile -LogFilePath "$env:UserProfile\Documents\timestamp-test.txt" -LoggingTextString "Script started" -AddTimeStamp
+        Write-Logfile -LogFilePath "$env:UserProfile\Documents\timestamp-test.txt" -AddText "Script started" -AddTimeStamp
     
       .NOTES  
         File Name  : WriteLogFile.ps1
         Authors    : Matt Gane
         Requires   : PowerShell version 5.0 or greater
-        Version    : 1.1 - 28th Jan 2021: Parse current logged in user's credentials to web proxy
-        History    : 
+        Version    : 1.2 - 28th Jan 2021
+        
     
     #>
     [CmdletBinding()]
     Param(
-      [Parameter(Mandatory=$true,ValueFromPipeline=$true)][string]$LoggingTextString,
+      [Parameter(Mandatory=$true,ValueFromPipeline=$true)][string]$AddText,
       [Parameter(Mandatory=$true,ValueFromPipeline=$true)][string]$LogFilePath,
       [Parameter(Mandatory=$false,ValueFromPipeline=$true)][switch]$AddTimeStamp
     )
     Add-Content -Path $LogFilePath -Value "`n"
     If ($AddTimeStamp.IsPresent){
-      $eventTimeStamp = $((Get-Date).tostring("dd-MM-yyyy HH:mm:ss"))
-      Add-content -Path $LogFilePath -value "$eventTimeStamp $loggingTextString"
+      $eventTimeStamp = $((Get-Date).tostring("[dd-MM-yyyy HH:mm:ss] "))
+      Add-content -Path $LogFilePath -value "$eventTimeStamp $AddText"
     } 
     Else 
     {
-      Add-content -Path $LogFilePath -value $loggingTextString
+      Add-content -Path $LogFilePath -value $AddText
     }
   }
   Export-ModuleMember -Function 'Write-Logfile'
