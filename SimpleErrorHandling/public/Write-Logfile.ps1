@@ -30,7 +30,7 @@ Function Write-Logfile{
 
         The following shows how you can use Write-LogFile to log a script or module being started, and using -AddTimeStamp we can prefix the log entry with the date and time without making "Get-Date" plus formatting calls in the script.
 
-        Write-Logfile -LogFilePath "$env:UserProfile\Documents\timestamp-test.txt" -AddText "Script started" -AddTimeStamp
+        Write-Logfile -LogFilePath "~\Documents\timestamp-test.txt" -AddText "Script started" -AddTimeStamp
     
       .NOTES  
         File Name  : WriteLogFile.ps1
